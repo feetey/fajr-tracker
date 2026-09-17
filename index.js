@@ -13,6 +13,7 @@ const DATA_DIR = path.dirname(DATA_FILE);
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Ensure data directory exists
 function ensureDataDir() {
@@ -27,12 +28,15 @@ function loadData() {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const data = fs.readFileSync(DATA_FILE, 'utf8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!parsed.members) parsed.members = {};
+      if (!parsed.checkins) parsed.checkins = [];
+      return parsed;
     }
   } catch (error) {
     console.error('Error loading data:', error);
   }
-  return { trackers: [] };
+  return { members: {}, checkins: [] };
 }
 
 // Save data to file
@@ -45,115 +49,103 @@ function saveData(data) {
   }
 }
 
-// Routes
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Fajr Tracker API',
-    version: '1.0.0',
-    description: 'Track and monitor Fajr prayer times',
-    endpoints: {
-      'GET /api/trackers': 'Get all Fajr trackers',
-      'POST /api/trackers': 'Create a new tracker',
-      'GET /api/trackers/:id': 'Get a specific tracker',
-      'PUT /api/trackers/:id': 'Update a tracker',
-      'DELETE /api/trackers/:id': 'Delete a tracker',
-      'POST /api/trackers/:id/log': 'Log a Fajr prayer'
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Compute current consecutive-day streak for a member.
+// Streak counts backward from today if they've already checked in today,
+// otherwise it counts backward from yesterday (so a missed "today" doesn't
+// zero out the streak until the day is over).
+function computeStreak(name, checkins) {
+  const dates = new Set(
+    checkins.filter((c) => c.name === name).map((c) => c.date)
+  );
+
+  const cursor = new Date();
+  if (!dates.has(todayStr())) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let streak = 0;
+  while (true) {
+    const ds = cursor.toISOString().slice(0, 10);
+    if (dates.has(ds)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
     }
-  });
-});
+  }
+  return streak;
+}
 
-// Get all trackers
-app.get('/api/trackers', (req, res) => {
+// ---- API ----
+
+// Full group state: every member, whether they've checked in today, and streak
+app.get('/api/state', (req, res) => {
   const data = loadData();
-  res.json(data.trackers);
+  const today = todayStr();
+
+  const members = Object.keys(data.members)
+    .map((name) => ({
+      name,
+      checkedInToday: data.checkins.some(
+        (c) => c.name === name && c.date === today
+      ),
+      streak: computeStreak(name, data.checkins),
+      joinedAt: data.members[name].joinedAt,
+    }))
+    .sort((a, b) => b.streak - a.streak || a.name.localeCompare(b.name));
+
+  res.json({ today, members });
 });
 
-// Create a new tracker
-app.post('/api/trackers', (req, res) => {
-  const { name, location } = req.body;
+// Join the group (idempotent - safe to call every time someone opens the app)
+app.post('/api/join', (req, res) => {
+  const { name } = req.body || {};
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+  const cleanName = name.trim().slice(0, 40);
+  const data = loadData();
 
-  if (!name || !location) {
-    return res.status(400).json({ error: 'Name and location are required' });
+  if (!data.members[cleanName]) {
+    data.members[cleanName] = { joinedAt: new Date().toISOString() };
+    saveData(data);
   }
 
-  const data = loadData();
-  const tracker = {
-    id: Date.now().toString(),
-    name,
-    location,
-    createdAt: new Date().toISOString(),
-    logs: []
-  };
+  res.json({ name: cleanName });
+});
 
-  data.trackers.push(tracker);
+// Check in for today's Fajr prayer
+app.post('/api/checkin', (req, res) => {
+  const { name } = req.body || {};
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+  const cleanName = name.trim().slice(0, 40);
+  const data = loadData();
+
+  if (!data.members[cleanName]) {
+    data.members[cleanName] = { joinedAt: new Date().toISOString() };
+  }
+
+  const today = todayStr();
+  const already = data.checkins.some(
+    (c) => c.name === cleanName && c.date === today
+  );
+
+  if (!already) {
+    data.checkins.push({
+      name: cleanName,
+      date: today,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   saveData(data);
-
-  res.status(201).json(tracker);
-});
-
-// Get a specific tracker
-app.get('/api/trackers/:id', (req, res) => {
-  const data = loadData();
-  const tracker = data.trackers.find(t => t.id === req.params.id);
-
-  if (!tracker) {
-    return res.status(404).json({ error: 'Tracker not found' });
-  }
-
-  res.json(tracker);
-});
-
-// Update a tracker
-app.put('/api/trackers/:id', (req, res) => {
-  const { name, location } = req.body;
-  const data = loadData();
-  const tracker = data.trackers.find(t => t.id === req.params.id);
-
-  if (!tracker) {
-    return res.status(404).json({ error: 'Tracker not found' });
-  }
-
-  if (name) tracker.name = name;
-  if (location) tracker.location = location;
-
-  saveData(data);
-  res.json(tracker);
-});
-
-// Delete a tracker
-app.delete('/api/trackers/:id', (req, res) => {
-  const data = loadData();
-  const index = data.trackers.findIndex(t => t.id === req.params.id);
-
-  if (index === -1) {
-    return res.status(404).json({ error: 'Tracker not found' });
-  }
-
-  const deleted = data.trackers.splice(index, 1);
-  saveData(data);
-  res.json(deleted[0]);
-});
-
-// Log a Fajr prayer
-app.post('/api/trackers/:id/log', (req, res) => {
-  const { time, notes } = req.body;
-  const data = loadData();
-  const tracker = data.trackers.find(t => t.id === req.params.id);
-
-  if (!tracker) {
-    return res.status(404).json({ error: 'Tracker not found' });
-  }
-
-  const log = {
-    logId: Date.now().toString(),
-    time: time || new Date().toISOString(),
-    notes: notes || '',
-    timestamp: new Date().toISOString()
-  };
-
-  tracker.logs.push(log);
-  saveData(data);
-  res.status(201).json(log);
+  res.json({ ok: true, alreadyCheckedIn: already });
 });
 
 // Health check
@@ -163,6 +155,6 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Fajr Tracker API running on port ${PORT}`);
+  console.log(`Fajr Tracker running on port ${PORT}`);
   console.log(`Data file: ${DATA_FILE}`);
 });
