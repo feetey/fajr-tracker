@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fajr Tracker</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --card: #131d31;
+    --card-border: #24314a;
+    --text: #e8edf6;
+    --muted: #8ea0bd;
+    --accent: #4fb3ff;
+    --accent2: #6ee7b7;
+    --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #16213a 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+  .wrap { width: 100%; max-width: 480px; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 {
+    font-size: 28px;
+    margin: 0 0 4px;
+  }
+  header p { color: var(--muted); margin: 0; font-size: 14px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    background: #0e1729;
+    color: var(--text);
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  input[type="text"]:focus { outline: 2px solid var(--accent); }
+
+  button {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #2f7fd6);
+    color: #06111f;
+  }
+  .btn-primary:disabled {
+    background: #23324f;
+    color: var(--muted);
+    cursor: default;
+  }
+  .btn-checked {
+    background: linear-gradient(135deg, var(--accent2), #2fbf8f);
+    color: #06231a;
+  }
+  .btn-link {
+    background: none;
+    width: auto;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+    padding: 4px;
+  }
+
+  .greeting { font-size: 15px; color: var(--muted); margin-bottom: 12px; }
+  .greeting b { color: var(--text); }
+
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .list li:last-child { border-bottom: none; }
+  .name-block { display: flex; align-items: center; gap: 10px; }
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #3a4a68;
+    flex-shrink: 0;
+  }
+  .status-dot.done { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .streak { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .streak.on { color: #ffb454; }
+
+  .section-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 12px 0; }
+  .footer-link { text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🌙 Fajr Tracker</h1>
+    <p>Check in with your friends, keep each other consistent.</p>
+  </header>
+
+  <div id="join-card" class="card" style="display:none;">
+    <p class="section-title">Get started</p>
+    <input id="name-input" type="text" placeholder="Your name" maxlength="40" />
+    <button id="join-btn" class="btn-primary">Join the group</button>
+  </div>
+
+  <div id="main-card" style="display:none;">
+    <div class="card">
+      <p class="greeting">Assalamu alaikum, <b id="me-name"></b> 👋</p>
+      <button id="checkin-btn" class="btn-primary">I prayed Fajr today ✓</button>
+      <div class="footer-link">
+        <button id="switch-btn" class="btn-link">Not you? Switch name</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="section-title">Group</p>
+      <ul id="member-list" class="list"></ul>
+      <div id="empty-state" class="empty" style="display:none;">No one has joined yet — be the first!</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'fajr-tracker-name';
+
+  const joinCard = document.getElementById('join-card');
+  const mainCard = document.getElementById('main-card');
+  const nameInput = document.getElementById('name-input');
+  const joinBtn = document.getElementById('join-btn');
+  const meName = document.getElementById('me-name');
+  const checkinBtn = document.getElementById('checkin-btn');
+  const switchBtn = document.getElementById('switch-btn');
+  const memberList = document.getElementById('member-list');
+  const emptyState = document.getElementById('empty-state');
+
+  function getStoredName() {
+    try { return localStorage.getItem(STORAGE_KEY) || ''; } catch (e) { return ''; }
+  }
+  function setStoredName(name) {
+    try { localStorage.setItem(STORAGE_KEY, name); } catch (e) {}
+  }
+  function clearStoredName() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  }
+
+  async function api(path, opts) {
+    const res = await fetch(path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    if (!res.ok) throw new Error('Request failed');
+    return res.json();
+  }
+
+  function renderMembers(members, myName) {
+    memberList.innerHTML = '';
+    if (!members.length) {
+      emptyState.style.display = 'block';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    members.forEach((m) => {
+      const li = document.createElement('li');
+
+      const left = document.createElement('div');
+      left.className = 'name-block';
+      const dot = document.createElement('div');
+      dot.className = 'status-dot' + (m.checkedInToday ? ' done' : '');
+      const label = document.createElement('span');
+      label.textContent = m.name + (m.name === myName ? ' (you)' : '');
+      left.appendChild(dot);
+      left.appendChild(label);
+
+      const streak = document.createElement('span');
+      streak.className = 'streak' + (m.streak > 0 ? ' on' : '');
+      streak.textContent = m.streak > 0 ? `🔥 ${m.streak} day${m.streak === 1 ? '' : 's'}` : 'no streak yet';
+
+      li.appendChild(left);
+      li.appendChild(streak);
+      memberList.appendChild(li);
+    });
+  }
+
+  async function refreshState(myName) {
+    const state = await api('/api/state');
+    renderMembers(state.members, myName);
+
+    const me = state.members.find((m) => m.name === myName);
+    if (me && me.checkedInToday) {
+      checkinBtn.textContent = 'Checked in for today ✓';
+      checkinBtn.className = 'btn-checked';
+      checkinBtn.disabled = true;
+    } else {
+      checkinBtn.textContent = 'I prayed Fajr today ✓';
+      checkinBtn.className = 'btn-primary';
+      checkinBtn.disabled = false;
+    }
+  }
+
+  function showMain(name) {
+    joinCard.style.display = 'none';
+    mainCard.style.display = 'block';
+    meName.textContent = name;
+    refreshState(name);
+  }
+
+  function showJoin() {
+    mainCard.style.display = 'none';
+    joinCard.style.display = 'block';
+    nameInput.value = '';
+    nameInput.focus();
+  }
+
+  joinBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    if (!name) return;
+    joinBtn.disabled = true;
+    try {
+      await api('/api/join', { method: 'POST', body: JSON.stringify({ name }) });
+      setStoredName(name);
+      showMain(name);
+    } catch (e) {
+      alert('Something went wrong joining. Please try again.');
+    } finally {
+      joinBtn.disabled = false;
+    }
+  });
+
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') joinBtn.click();
+  });
+
+  checkinBtn.addEventListener('click', async () => {
+    const name = getStoredName();
+    if (!name) return;
+    checkinBtn.disabled = true;
+    try {
+      await api('/api/checkin', { method: 'POST', body: JSON.stringify({ name }) });
+      await refreshState(name);
+    } catch (e) {
+      alert('Something went wrong checking in. Please try again.');
+      checkinBtn.disabled = false;
+    }
+  });
+
+  switchBtn.addEventListener('click', () => {
+    clearStoredName();
+    showJoin();
+  });
+
+  // Init
+  const stored = getStoredName();
+  if (stored) {
+    showMain(stored);
+  } else {
+    showJoin();
+  }
+
+  // Light polling so everyone's screen stays roughly in sync
+  setInterval(() => {
+    const name = getStoredName();
+    if (name && mainCard.style.display !== 'none') {
+      refreshState(name).catch(() => {});
+    }
+  }, 15000);
+</script>
+</body>
+</html>
