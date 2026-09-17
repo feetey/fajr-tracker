@@ -89,6 +89,27 @@
   .dot.missed { background: var(--missed); }
   .dot.pending { background: var(--pending); }
 
+  .month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .month-nav .month-label {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+  }
+  .month-nav .jump-today {
+    font-size: 11px; font-weight: 500; color: var(--accent);
+    background: none; border: none; padding: 2px 0 0; cursor: pointer;
+    text-decoration: underline; width: auto;
+  }
+  .nav-btn {
+    width: 34px; height: 34px; flex: 0 0 auto; padding: 0;
+    border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 16px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .nav-btn:disabled { opacity: 0.35; cursor: default; }
+
   .weekday-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 4px; }
   .weekday-row span { text-align: center; font-size: 10px; color: var(--text-dim); }
   .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -98,6 +119,7 @@
     cursor: pointer;
   }
   .day.empty { visibility: hidden; cursor: default; }
+  .day.future { visibility: hidden; cursor: default; }
   .day.home { background: var(--home-soft); border-color: var(--home); color: var(--home); font-weight: 600; }
   .day.masjid { background: var(--masjid-soft); border-color: var(--masjid); color: var(--masjid); font-weight: 600; }
   .day.missed { background: var(--missed-soft); border-color: var(--missed); color: var(--missed); font-weight: 600; }
@@ -201,7 +223,14 @@
   </div>
 
   <div class="card">
-    <h2>Your last 6 weeks</h2>
+    <div class="month-nav">
+      <button class="nav-btn" id="prevMonth" aria-label="Previous month">‹</button>
+      <div class="month-label">
+        <span id="monthLabel">Month Year</span>
+        <button class="jump-today" id="jumpToday" style="display:none;">Jump to today</button>
+      </div>
+      <button class="nav-btn" id="nextMonth" aria-label="Next month">›</button>
+    </div>
     <div class="weekday-row">
       <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
     </div>
@@ -244,6 +273,10 @@
   var myName = null;
   var mySlug = null;
   var state = { users: [], logs: [] };
+
+  // Which month the calendar card is currently showing (always day 1 of that month)
+  var viewDate = startOfDay(new Date());
+  viewDate.setDate(1);
 
   // ---- API helpers ----
   function api(path, opts) {
@@ -304,6 +337,10 @@
   var statStreak = document.getElementById('statStreak');
   var statPct = document.getElementById('statPct');
   var statMissed = document.getElementById('statMissed');
+  var monthLabelEl = document.getElementById('monthLabel');
+  var jumpTodayBtn = document.getElementById('jumpToday');
+  var prevMonthBtn = document.getElementById('prevMonth');
+  var nextMonthBtn = document.getElementById('nextMonth');
 
   function labelFor(status) {
     if (status === 'home') return '🏠 Prayed at home';
@@ -341,6 +378,78 @@
     return status || null;
   }
 
+  // Stats card always reflects the real current calendar month (independent of
+  // whichever month the grid below happens to be browsing).
+  function computeCurrentMonthStats(logMap, today) {
+    var year = today.getFullYear();
+    var month = today.getMonth();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var good = 0, missed = 0, logged = 0;
+    for (var i = 1; i <= daysInMonth; i++) {
+      var d = new Date(year, month, i);
+      if (d.getTime() > today.getTime()) break;
+      var status = effectiveStatus(logMap, d, today);
+      if (status === 'home' || status === 'masjid') { good++; logged++; }
+      else if (status === 'missed') { missed++; logged++; }
+    }
+    return { good: good, missed: missed, logged: logged };
+  }
+
+  function isSameMonth(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+  }
+
+  function renderMonthGrid(myLogs, today) {
+    var year = viewDate.getFullYear();
+    var month = viewDate.getMonth();
+
+    monthLabelEl.textContent = MONTHS[month] + ' ' + year;
+    var onCurrentMonth = isSameMonth(viewDate, today);
+    nextMonthBtn.disabled = onCurrentMonth;
+    jumpTodayBtn.style.display = onCurrentMonth ? 'none' : 'inline-block';
+
+    var firstOfMonth = new Date(year, month, 1);
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var leadPad = firstOfMonth.getDay();
+
+    historyGrid.innerHTML = '';
+    for (var p = 0; p < leadPad; p++) {
+      var lead = document.createElement('div');
+      lead.className = 'day empty';
+      historyGrid.appendChild(lead);
+    }
+
+    for (var i = 1; i <= daysInMonth; i++) {
+      var d = new Date(year, month, i);
+      var isFuture = d.getTime() > today.getTime();
+      var isToday = d.getTime() === today.getTime();
+      var status = effectiveStatus(myLogs, d, today);
+
+      var div = document.createElement('div');
+      var cls = 'day';
+      if (isFuture) {
+        cls += ' future';
+      } else {
+        if (status) cls += ' ' + status;
+        if (isToday) cls += ' today';
+      }
+      div.className = cls;
+      div.textContent = i;
+      if (!isFuture) {
+        (function (key) { div.addEventListener('click', function () { openPopover(key, d); }); })(toKey(d));
+      }
+      historyGrid.appendChild(div);
+    }
+
+    var totalCells = leadPad + daysInMonth;
+    var trailPad = (7 - (totalCells % 7)) % 7;
+    for (var t = 0; t < trailPad; t++) {
+      var trail = document.createElement('div');
+      trail.className = 'day empty';
+      historyGrid.appendChild(trail);
+    }
+  }
+
   function render() {
     if (!myName) return;
     var today = startOfDay(new Date());
@@ -356,48 +465,12 @@
       b.classList.toggle('active', b.dataset.status === tStatus);
     });
 
-    // 42-day grid for "you"
-    var totalDays = 42;
-    var start = new Date(today);
-    start.setDate(start.getDate() - (totalDays - 1));
-    var leadPad = start.getDay();
-
-    historyGrid.innerHTML = '';
-    for (var p = 0; p < leadPad; p++) {
-      var empty = document.createElement('div');
-      empty.className = 'day empty';
-      historyGrid.appendChild(empty);
-    }
-
-    var monthGood = 0, monthMissed = 0, monthLogged = 0;
-    for (var i = 0; i < totalDays; i++) {
-      var d = new Date(start);
-      d.setDate(d.getDate() + i);
-      var status = effectiveStatus(myLogs, d, today);
-      var isFuture = d.getTime() > today.getTime();
-      var isToday = d.getTime() === today.getTime();
-
-      var div = document.createElement('div');
-      var cls = 'day';
-      if (status) cls += ' ' + status;
-      if (isToday) cls += ' today';
-      div.className = cls;
-      div.textContent = d.getDate();
-      if (isFuture) { div.style.visibility = 'hidden'; }
-      else {
-        (function (key) { div.addEventListener('click', function () { openPopover(key, d); }); })(toKey(d));
-      }
-      historyGrid.appendChild(div);
-
-      if (d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() && !isFuture) {
-        if (status === 'home' || status === 'masjid') { monthGood++; monthLogged++; }
-        else if (status === 'missed') { monthMissed++; monthLogged++; }
-      }
-    }
-
+    var monthStats = computeCurrentMonthStats(myLogs, today);
     statStreak.textContent = computeStreak(myLogs, today);
-    statPct.textContent = monthLogged ? Math.round((monthGood / monthLogged) * 100) + '%' : '—';
-    statMissed.textContent = monthMissed;
+    statPct.textContent = monthStats.logged ? Math.round((monthStats.good / monthStats.logged) * 100) + '%' : '—';
+    statMissed.textContent = monthStats.missed;
+
+    renderMonthGrid(myLogs, today);
 
     // Friends board
     var users = state.users.slice();
@@ -459,6 +532,22 @@
       if (btn.id === 'clearToday') { setStatus(today, 'clear'); return; }
       setStatus(today, btn.dataset.status);
     });
+  });
+
+  // month navigation
+  prevMonthBtn.addEventListener('click', function () {
+    viewDate.setMonth(viewDate.getMonth() - 1);
+    render();
+  });
+  nextMonthBtn.addEventListener('click', function () {
+    if (nextMonthBtn.disabled) return;
+    viewDate.setMonth(viewDate.getMonth() + 1);
+    render();
+  });
+  jumpTodayBtn.addEventListener('click', function () {
+    viewDate = startOfDay(new Date());
+    viewDate.setDate(1);
+    render();
   });
 
   // popover for past days
