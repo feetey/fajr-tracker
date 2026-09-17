@@ -53,6 +53,16 @@
   header h1 { font-size: 20px; margin: 6px 0 2px; }
   header .sub { font-size: 13px; color: var(--text-dim); }
 
+  .tabs {
+    display: flex; gap: 4px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px; margin-bottom: 16px;
+  }
+  .tab-btn {
+    flex: 1; padding: 10px; border: none; border-radius: 9px; background: none;
+    color: var(--text-dim); font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  .tab-btn.active { background: var(--accent); color: #fff; }
+
   .card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow);
@@ -125,6 +135,8 @@
   .day.missed { background: var(--missed-soft); border-color: var(--missed); color: var(--missed); font-weight: 600; }
   .day.today { box-shadow: 0 0 0 2px var(--accent); }
 
+  .month-totals { margin-top: 10px; font-size: 12px; color: var(--text-dim); text-align: center; }
+
   .friend-row {
     display: flex; align-items: center; gap: 10px; padding: 10px 0;
     border-bottom: 1px solid var(--border);
@@ -132,13 +144,26 @@
   .friend-row:last-child { border-bottom: none; }
   .friend-name { flex: 1; font-size: 14px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .friend-name.you { color: var(--accent); }
-  .friend-streak { font-size: 11px; color: var(--text-dim); flex: 0 0 auto; width: 52px; text-align: right; }
+  .friend-streak { font-size: 11px; color: var(--text-dim); flex: 0 0 auto; white-space: nowrap; }
   .mini-strip { display: flex; gap: 3px; flex: 0 0 auto; }
   .mini-dot { width: 9px; height: 9px; border-radius: 3px; }
   .mini-dot.home { background: var(--home); }
   .mini-dot.masjid { background: var(--masjid); }
   .mini-dot.missed { background: var(--missed); }
   .mini-dot.pending { background: var(--pending); }
+  .rank-num { flex: 0 0 auto; width: 26px; font-size: 12px; color: var(--text-dim); font-weight: 700; }
+
+  .group-summary {
+    font-size: 12px; color: var(--text-dim); margin-bottom: 12px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .group-row { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .group-row:last-child { border-bottom: none; }
+  .group-row-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .group-pct { color: var(--text-dim); font-weight: 700; font-size: 12px; }
+  .pct-bar-track { background: var(--pending-soft); border-radius: 6px; height: 6px; overflow: hidden; }
+  .pct-bar-fill { height: 100%; background: var(--accent); border-radius: 6px; }
+  .group-row-counts { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
 
   .empty-state { font-size: 13px; color: var(--text-dim); text-align: center; padding: 8px 0; }
 
@@ -192,49 +217,79 @@
     <div class="sub" id="whoami"></div>
   </header>
 
-  <div class="card">
-    <div class="today-date" id="todayDate"></div>
-    <div class="today-status" id="todayStatus">Not logged yet</div>
-    <div class="btn-row">
-      <button class="btn home" data-status="home">🏠 Home</button>
-      <button class="btn masjid" data-status="masjid">🕌 Masjid</button>
-      <button class="btn clear" id="clearToday">Clear</button>
-    </div>
+  <div class="tabs">
+    <button class="tab-btn active" id="tabMeBtn">Me</button>
+    <button class="tab-btn" id="tabGroupBtn">Group</button>
   </div>
 
-  <div class="card">
-    <h2>Your month</h2>
-    <div class="stats-grid">
-      <div class="stat streak"><div class="num" id="statStreak">0</div><div class="lbl">day streak</div></div>
-      <div class="stat"><div class="num" id="statPct">—</div><div class="lbl">on time</div></div>
-      <div class="stat"><div class="num" id="statMissed">0</div><div class="lbl">missed</div></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Friends</h2>
-    <div class="legend">
-      <span><i class="dot home"></i>Home</span>
-      <span><i class="dot masjid"></i>Masjid</span>
-      <span><i class="dot missed"></i>Missed</span>
-      <span><i class="dot pending"></i>Pending</span>
-    </div>
-    <div id="friendsList"></div>
-  </div>
-
-  <div class="card">
-    <div class="month-nav">
-      <button class="nav-btn" id="prevMonth" aria-label="Previous month">‹</button>
-      <div class="month-label">
-        <span id="monthLabel">Month Year</span>
-        <button class="jump-today" id="jumpToday" style="display:none;">Jump to today</button>
+  <!-- ==================== ME TAB ==================== -->
+  <div id="tabMe">
+    <div class="card">
+      <div class="today-date" id="todayDate"></div>
+      <div class="today-status" id="todayStatus">Not logged yet</div>
+      <div class="btn-row">
+        <button class="btn home" data-status="home">🏠 Home</button>
+        <button class="btn masjid" data-status="masjid">🕌 Masjid</button>
+        <button class="btn clear" id="clearToday">Clear</button>
       </div>
-      <button class="nav-btn" id="nextMonth" aria-label="Next month">›</button>
     </div>
-    <div class="weekday-row">
-      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+
+    <div class="card">
+      <h2>Your month</h2>
+      <div class="stats-grid">
+        <div class="stat streak"><div class="num" id="statStreak">0</div><div class="lbl">day streak</div></div>
+        <div class="stat"><div class="num" id="statPct">—</div><div class="lbl">on time</div></div>
+        <div class="stat"><div class="num" id="statMissed">0</div><div class="lbl">missed</div></div>
+      </div>
     </div>
-    <div class="grid" id="historyGrid"></div>
+
+    <div class="card">
+      <div class="month-nav">
+        <button class="nav-btn" id="prevMonth" aria-label="Previous month">‹</button>
+        <div class="month-label">
+          <span id="monthLabel">Month Year</span>
+          <button class="jump-today" id="jumpToday" style="display:none;">Jump to today</button>
+        </div>
+        <button class="nav-btn" id="nextMonth" aria-label="Next month">›</button>
+      </div>
+      <div class="weekday-row">
+        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+      </div>
+      <div class="grid" id="historyGrid"></div>
+      <div class="month-totals" id="monthTotals"></div>
+    </div>
+  </div>
+
+  <!-- ==================== GROUP TAB ==================== -->
+  <div id="tabGroup" style="display:none;">
+    <div class="card">
+      <h2>Recent activity</h2>
+      <div class="legend">
+        <span><i class="dot home"></i>Home</span>
+        <span><i class="dot masjid"></i>Masjid</span>
+        <span><i class="dot missed"></i>Missed</span>
+        <span><i class="dot pending"></i>Pending</span>
+      </div>
+      <div id="friendsList"></div>
+    </div>
+
+    <div class="card">
+      <div class="month-nav">
+        <button class="nav-btn" id="gPrevMonth" aria-label="Previous month">‹</button>
+        <div class="month-label">
+          <span id="gMonthLabel">Month Year</span>
+          <button class="jump-today" id="gJumpToday" style="display:none;">Jump to today</button>
+        </div>
+        <button class="nav-btn" id="gNextMonth" aria-label="Next month">›</button>
+      </div>
+      <h2 style="margin-top:2px;">Group totals</h2>
+      <div id="groupMonthTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>All-time leaderboard</h2>
+      <div id="allTimeList"></div>
+    </div>
   </div>
 
   <footer>Everyone on this link shares one board. Tap any past day to fix a log.</footer>
@@ -266,6 +321,9 @@
   function slugify(name) {
     return String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'friend';
   }
+  function isSameMonth(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+  }
 
   var WEEKDAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -273,10 +331,6 @@
   var myName = null;
   var mySlug = null;
   var state = { users: [], logs: [] };
-
-  // Which month the calendar card is currently showing (always day 1 of that month)
-  var viewDate = startOfDay(new Date());
-  viewDate.setDate(1);
 
   // ---- API helpers ----
   function api(path, opts) {
@@ -329,6 +383,56 @@
     if (saved) joinAs(saved);
   } catch (e) {}
 
+  // ---- tabs ----
+  var tabMeBtn = document.getElementById('tabMeBtn');
+  var tabGroupBtn = document.getElementById('tabGroupBtn');
+  var tabMeEl = document.getElementById('tabMe');
+  var tabGroupEl = document.getElementById('tabGroup');
+
+  function showTab(name) {
+    tabMeEl.style.display = name === 'me' ? 'block' : 'none';
+    tabGroupEl.style.display = name === 'group' ? 'block' : 'none';
+    tabMeBtn.classList.toggle('active', name === 'me');
+    tabGroupBtn.classList.toggle('active', name === 'group');
+  }
+  tabMeBtn.addEventListener('click', function () { showTab('me'); });
+  tabGroupBtn.addEventListener('click', function () { showTab('group'); });
+
+  // ---- generic month navigator (used by both the personal calendar and group totals) ----
+  function createMonthNav(prevBtn, nextBtn, labelEl, jumpBtn, onChange) {
+    var date = startOfDay(new Date());
+    date.setDate(1);
+
+    function update() {
+      var today = startOfDay(new Date());
+      labelEl.textContent = MONTHS[date.getMonth()] + ' ' + date.getFullYear();
+      var onCurrent = isSameMonth(date, today);
+      nextBtn.disabled = onCurrent;
+      jumpBtn.style.display = onCurrent ? 'none' : 'inline-block';
+    }
+
+    prevBtn.addEventListener('click', function () {
+      date.setMonth(date.getMonth() - 1);
+      update();
+      onChange(date);
+    });
+    nextBtn.addEventListener('click', function () {
+      if (nextBtn.disabled) return;
+      date.setMonth(date.getMonth() + 1);
+      update();
+      onChange(date);
+    });
+    jumpBtn.addEventListener('click', function () {
+      date = startOfDay(new Date());
+      date.setDate(1);
+      update();
+      onChange(date);
+    });
+
+    update();
+    return { getDate: function () { return date; }, refreshLabel: update };
+  }
+
   // ---- rendering ----
   var todayDateEl = document.getElementById('todayDate');
   var todayStatusEl = document.getElementById('todayStatus');
@@ -341,6 +445,17 @@
   var jumpTodayBtn = document.getElementById('jumpToday');
   var prevMonthBtn = document.getElementById('prevMonth');
   var nextMonthBtn = document.getElementById('nextMonth');
+  var monthTotalsEl = document.getElementById('monthTotals');
+
+  var gMonthLabelEl = document.getElementById('gMonthLabel');
+  var gJumpTodayBtn = document.getElementById('gJumpToday');
+  var gPrevMonthBtn = document.getElementById('gPrevMonth');
+  var gNextMonthBtn = document.getElementById('gNextMonth');
+  var groupMonthTable = document.getElementById('groupMonthTable');
+  var allTimeList = document.getElementById('allTimeList');
+
+  var personalNav = createMonthNav(prevMonthBtn, nextMonthBtn, monthLabelEl, jumpTodayBtn, function () { render(); });
+  var groupNav = createMonthNav(gPrevMonthBtn, gNextMonthBtn, gMonthLabelEl, gJumpTodayBtn, function () { render(); });
 
   function labelFor(status) {
     if (status === 'home') return '🏠 Prayed at home';
@@ -378,35 +493,42 @@
     return status || null;
   }
 
-  // Stats card always reflects the real current calendar month (independent of
-  // whichever month the grid below happens to be browsing).
-  function computeCurrentMonthStats(logMap, today) {
-    var year = today.getFullYear();
-    var month = today.getMonth();
+  // Totals (home/masjid/missed counts + on-time %) for one user in one calendar month.
+  // Days after "today" are not counted; "today" itself only counts once it has a status.
+  function computeMonthCounts(logMap, year, month, today) {
     var daysInMonth = new Date(year, month + 1, 0).getDate();
-    var good = 0, missed = 0, logged = 0;
+    var home = 0, masjid = 0, missed = 0;
     for (var i = 1; i <= daysInMonth; i++) {
       var d = new Date(year, month, i);
       if (d.getTime() > today.getTime()) break;
       var status = effectiveStatus(logMap, d, today);
-      if (status === 'home' || status === 'masjid') { good++; logged++; }
-      else if (status === 'missed') { missed++; logged++; }
+      if (status === 'home') home++;
+      else if (status === 'masjid') masjid++;
+      else if (status === 'missed') missed++;
     }
-    return { good: good, missed: missed, logged: logged };
+    var total = home + masjid + missed;
+    var pct = total ? Math.round(((home + masjid) / total) * 100) : 0;
+    return { home: home, masjid: masjid, missed: missed, total: total, pct: pct };
   }
 
-  function isSameMonth(a, b) {
-    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+  // Stats card always reflects the real current calendar month (independent of
+  // whichever month the "Me" calendar happens to be browsing).
+  function computeCurrentMonthStats(logMap, today) {
+    return computeMonthCounts(logMap, today.getFullYear(), today.getMonth(), today);
+  }
+
+  function allUsersIncludingMe() {
+    var users = state.users.slice();
+    if (myName && !users.some(function (u) { return u.slug === mySlug; })) {
+      users.push({ name: myName, slug: mySlug });
+    }
+    return users;
   }
 
   function renderMonthGrid(myLogs, today) {
+    var viewDate = personalNav.getDate();
     var year = viewDate.getFullYear();
     var month = viewDate.getMonth();
-
-    monthLabelEl.textContent = MONTHS[month] + ' ' + year;
-    var onCurrentMonth = isSameMonth(viewDate, today);
-    nextMonthBtn.disabled = onCurrentMonth;
-    jumpTodayBtn.style.display = onCurrentMonth ? 'none' : 'inline-block';
 
     var firstOfMonth = new Date(year, month, 1);
     var daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -448,36 +570,16 @@
       trail.className = 'day empty';
       historyGrid.appendChild(trail);
     }
+
+    var counts = computeMonthCounts(myLogs, year, month, today);
+    monthTotalsEl.textContent = counts.total
+      ? '🏠 ' + counts.home + '   🕌 ' + counts.masjid + '   ✕ ' + counts.missed + '   ·   ' + counts.pct + '% on time'
+      : 'No days logged this month';
   }
 
-  function render() {
-    if (!myName) return;
-    var today = startOfDay(new Date());
+  function renderRecentActivity(today) {
     var tKey = toKey(today);
-    var myLogs = logsBySlug(mySlug);
-
-    todayDateEl.textContent = WEEKDAYS_LONG[today.getDay()] + ', ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
-    var tStatus = myLogs[tKey];
-    todayStatusEl.textContent = tStatus ? labelFor(tStatus) : 'Not logged yet — becomes missed once today passes';
-
-    document.querySelectorAll('.card .btn-row .btn.home, .card .btn-row .btn.masjid').forEach(function (b) {
-      if (b.closest('.popover')) return;
-      b.classList.toggle('active', b.dataset.status === tStatus);
-    });
-
-    var monthStats = computeCurrentMonthStats(myLogs, today);
-    statStreak.textContent = computeStreak(myLogs, today);
-    statPct.textContent = monthStats.logged ? Math.round((monthStats.good / monthStats.logged) * 100) + '%' : '—';
-    statMissed.textContent = monthStats.missed;
-
-    renderMonthGrid(myLogs, today);
-
-    // Friends board
-    var users = state.users.slice();
-    if (!users.some(function (u) { return u.slug === mySlug; })) {
-      users.push({ name: myName, slug: mySlug });
-    }
-    var rows = users.map(function (u) {
+    var rows = allUsersIncludingMe().map(function (u) {
       var lm = logsBySlug(u.slug);
       var streak = computeStreak(lm, today);
       var strip = [];
@@ -524,30 +626,155 @@
     });
   }
 
+  function renderGroupMonthTable(today) {
+    var gDate = groupNav.getDate();
+    var year = gDate.getFullYear();
+    var month = gDate.getMonth();
+
+    var rows = allUsersIncludingMe().map(function (u) {
+      var lm = logsBySlug(u.slug);
+      return { user: u, counts: computeMonthCounts(lm, year, month, today) };
+    });
+    rows.sort(function (a, b) { return b.counts.pct - a.counts.pct || b.counts.total - a.counts.total; });
+
+    groupMonthTable.innerHTML = '';
+    if (!rows.length) {
+      var e = document.createElement('div');
+      e.className = 'empty-state';
+      e.textContent = 'No one has joined yet.';
+      groupMonthTable.appendChild(e);
+      return;
+    }
+
+    var sumHome = 0, sumMasjid = 0, sumMissed = 0, sumTotal = 0;
+    rows.forEach(function (r) {
+      sumHome += r.counts.home;
+      sumMasjid += r.counts.masjid;
+      sumMissed += r.counts.missed;
+      sumTotal += r.counts.total;
+    });
+    var groupPct = sumTotal ? Math.round(((sumHome + sumMasjid) / sumTotal) * 100) : 0;
+
+    var summary = document.createElement('div');
+    summary.className = 'group-summary';
+    summary.textContent = sumTotal
+      ? 'Group average: ' + groupPct + '% on time  ·  🏠 ' + sumHome + '  🕌 ' + sumMasjid + '  ✕ ' + sumMissed
+      : 'No days logged by the group this month yet';
+    groupMonthTable.appendChild(summary);
+
+    rows.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'group-row';
+
+      var top = document.createElement('div');
+      top.className = 'group-row-top';
+      var name = document.createElement('span');
+      name.className = 'friend-name' + (r.user.slug === mySlug ? ' you' : '');
+      name.textContent = r.user.name + (r.user.slug === mySlug ? ' (you)' : '');
+      var pctLabel = document.createElement('span');
+      pctLabel.className = 'group-pct';
+      pctLabel.textContent = r.counts.total ? r.counts.pct + '%' : '—';
+      top.appendChild(name);
+      top.appendChild(pctLabel);
+
+      var track = document.createElement('div');
+      track.className = 'pct-bar-track';
+      var fill = document.createElement('div');
+      fill.className = 'pct-bar-fill';
+      fill.style.width = r.counts.pct + '%';
+      track.appendChild(fill);
+
+      var counts = document.createElement('div');
+      counts.className = 'group-row-counts';
+      counts.textContent = '🏠 ' + r.counts.home + '   🕌 ' + r.counts.masjid + '   ✕ ' + r.counts.missed;
+
+      row.appendChild(top);
+      row.appendChild(track);
+      row.appendChild(counts);
+      groupMonthTable.appendChild(row);
+    });
+  }
+
+  function renderAllTimeLeaderboard(today) {
+    var rows = allUsersIncludingMe().map(function (u) {
+      var lm = logsBySlug(u.slug);
+      var home = 0, masjid = 0;
+      Object.keys(lm).forEach(function (k) {
+        if (lm[k] === 'home') home++;
+        else if (lm[k] === 'masjid') masjid++;
+      });
+      return { user: u, total: home + masjid, home: home, masjid: masjid, streak: computeStreak(lm, today) };
+    });
+    rows.sort(function (a, b) { return b.total - a.total || b.streak - a.streak; });
+
+    allTimeList.innerHTML = '';
+    if (!rows.length) {
+      var e = document.createElement('div');
+      e.className = 'empty-state';
+      e.textContent = 'No one has joined yet.';
+      allTimeList.appendChild(e);
+      return;
+    }
+
+    rows.forEach(function (r, idx) {
+      var row = document.createElement('div');
+      row.className = 'friend-row';
+
+      var rank = document.createElement('div');
+      rank.className = 'rank-num';
+      rank.textContent = '#' + (idx + 1);
+
+      var name = document.createElement('div');
+      name.className = 'friend-name' + (r.user.slug === mySlug ? ' you' : '');
+      name.textContent = r.user.name + (r.user.slug === mySlug ? ' (you)' : '');
+
+      var total = document.createElement('div');
+      total.className = 'friend-streak';
+      total.textContent = r.total + ' total  ·  ' + r.streak + '🔥';
+
+      row.appendChild(rank);
+      row.appendChild(name);
+      row.appendChild(total);
+      allTimeList.appendChild(row);
+    });
+  }
+
+  function render() {
+    if (!myName) return;
+    var today = startOfDay(new Date());
+    var tKey = toKey(today);
+    var myLogs = logsBySlug(mySlug);
+
+    todayDateEl.textContent = WEEKDAYS_LONG[today.getDay()] + ', ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
+    var tStatus = myLogs[tKey];
+    todayStatusEl.textContent = tStatus ? labelFor(tStatus) : 'Not logged yet — becomes missed once today passes';
+
+    document.querySelectorAll('#tabMe .card .btn-row .btn.home, #tabMe .card .btn-row .btn.masjid').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.status === tStatus);
+    });
+
+    var monthStats = computeCurrentMonthStats(myLogs, today);
+    statStreak.textContent = computeStreak(myLogs, today);
+    statPct.textContent = monthStats.total ? monthStats.pct + '%' : '—';
+    statMissed.textContent = monthStats.missed;
+
+    personalNav.refreshLabel();
+    groupNav.refreshLabel();
+
+    renderMonthGrid(myLogs, today);
+    renderRecentActivity(today);
+    renderGroupMonthTable(today);
+    renderAllTimeLeaderboard(today);
+  }
+
   // today buttons
-  document.querySelectorAll('#app .card .btn-row .btn').forEach(function (btn) {
+  document.querySelectorAll('#tabMe .card .btn-row .btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       if (!myName) return;
       var today = toKey(startOfDay(new Date()));
       if (btn.id === 'clearToday') { setStatus(today, 'clear'); return; }
       setStatus(today, btn.dataset.status);
     });
-  });
-
-  // month navigation
-  prevMonthBtn.addEventListener('click', function () {
-    viewDate.setMonth(viewDate.getMonth() - 1);
-    render();
-  });
-  nextMonthBtn.addEventListener('click', function () {
-    if (nextMonthBtn.disabled) return;
-    viewDate.setMonth(viewDate.getMonth() + 1);
-    render();
-  });
-  jumpTodayBtn.addEventListener('click', function () {
-    viewDate = startOfDay(new Date());
-    viewDate.setDate(1);
-    render();
   });
 
   // popover for past days
