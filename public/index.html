@@ -1,298 +1,488 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Fajr Tracker</title>
 <style>
   :root {
-    --bg: #0b1220;
-    --card: #131d31;
-    --card-border: #24314a;
-    --text: #e8edf6;
-    --muted: #8ea0bd;
-    --accent: #4fb3ff;
-    --accent2: #6ee7b7;
-    --danger: #ff6b6b;
+    --bg: #f5f3ee;
+    --card: #ffffff;
+    --text: #1c1b19;
+    --text-dim: #6b6860;
+    --border: #e5e1d8;
+    --accent: #2f6e5e;
+    --home: #3b7dd8;
+    --home-soft: #e6eefc;
+    --masjid: #2f9e6f;
+    --masjid-soft: #e4f5ec;
+    --missed: #c85a4a;
+    --missed-soft: #fbe9e6;
+    --pending: #cfc9ba;
+    --pending-soft: #f1efe8;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a;
+      --card: #212226;
+      --text: #eeece6;
+      --text-dim: #9a978d;
+      --border: #34353a;
+      --accent: #5fb79a;
+      --home: #6ea3e8;
+      --home-soft: #1c2734;
+      --masjid: #5fc298;
+      --masjid-soft: #1a2d24;
+      --missed: #e08373;
+      --missed-soft: #33221f;
+      --pending: #4a4b50;
+      --pending-soft: #26272b;
+      --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: radial-gradient(circle at top, #16213a 0%, var(--bg) 60%);
-    color: var(--text);
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    padding: 24px 16px 60px;
   }
-  .wrap { width: 100%; max-width: 480px; }
-  header { text-align: center; margin-bottom: 24px; }
-  header h1 {
-    font-size: 28px;
-    margin: 0 0 4px;
-  }
-  header p { color: var(--muted); margin: 0; font-size: 14px; }
+  body { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { text-align: center; margin-bottom: 16px; }
+  header .icon { font-size: 34px; }
+  header h1 { font-size: 20px; margin: 6px 0 2px; }
+  header .sub { font-size: 13px; color: var(--text-dim); }
 
   .card {
-    background: var(--card);
-    border: 1px solid var(--card-border);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 13px; margin: 0 0 12px; color: var(--text-dim);
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
   }
 
-  input[type="text"] {
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--card-border);
-    background: #0e1729;
-    color: var(--text);
-    font-size: 16px;
-    margin-bottom: 12px;
+  .today-date { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+  .today-status { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 13px 8px; border-radius: 12px; border: 1.5px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 14px; font-weight: 600;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
-  input[type="text"]:focus { outline: 2px solid var(--accent); }
+  .btn:active { transform: scale(0.97); }
+  .btn.home.active { background: var(--home-soft); border-color: var(--home); color: var(--home); }
+  .btn.masjid.active { background: var(--masjid-soft); border-color: var(--masjid); color: var(--masjid); }
+  .btn.clear { flex: 0 0 auto; padding: 13px 14px; font-size: 13px; color: var(--text-dim); }
 
-  button {
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: none;
-    font-size: 16px;
-    font-weight: 600;
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat { text-align: center; padding: 10px 4px; border-radius: 12px; background: var(--bg); }
+  .stat .num { font-size: 20px; font-weight: 700; }
+  .stat .lbl { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .stat.streak .num { color: var(--accent); }
+
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-dim); margin-bottom: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .dot.home { background: var(--home); }
+  .dot.masjid { background: var(--masjid); }
+  .dot.missed { background: var(--missed); }
+  .dot.pending { background: var(--pending); }
+
+  .weekday-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 4px; }
+  .weekday-row span { text-align: center; font-size: 10px; color: var(--text-dim); }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .day {
+    aspect-ratio: 1; border-radius: 8px; background: var(--pending-soft); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-dim);
     cursor: pointer;
   }
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), #2f7fd6);
-    color: #06111f;
+  .day.empty { visibility: hidden; cursor: default; }
+  .day.home { background: var(--home-soft); border-color: var(--home); color: var(--home); font-weight: 600; }
+  .day.masjid { background: var(--masjid-soft); border-color: var(--masjid); color: var(--masjid); font-weight: 600; }
+  .day.missed { background: var(--missed-soft); border-color: var(--missed); color: var(--missed); font-weight: 600; }
+  .day.today { box-shadow: 0 0 0 2px var(--accent); }
+
+  .friend-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
   }
-  .btn-primary:disabled {
-    background: #23324f;
-    color: var(--muted);
-    cursor: default;
+  .friend-row:last-child { border-bottom: none; }
+  .friend-name { flex: 1; font-size: 14px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .friend-name.you { color: var(--accent); }
+  .friend-streak { font-size: 11px; color: var(--text-dim); flex: 0 0 auto; width: 52px; text-align: right; }
+  .mini-strip { display: flex; gap: 3px; flex: 0 0 auto; }
+  .mini-dot { width: 9px; height: 9px; border-radius: 3px; }
+  .mini-dot.home { background: var(--home); }
+  .mini-dot.masjid { background: var(--masjid); }
+  .mini-dot.missed { background: var(--missed); }
+  .mini-dot.pending { background: var(--pending); }
+
+  .empty-state { font-size: 13px; color: var(--text-dim); text-align: center; padding: 8px 0; }
+
+  .popover {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    display: none; align-items: flex-end; justify-content: center; z-index: 50;
   }
-  .btn-checked {
-    background: linear-gradient(135deg, var(--accent2), #2fbf8f);
-    color: #06231a;
+  .popover.open { display: flex; }
+  .popover-sheet { background: var(--card); width: 100%; max-width: 520px; border-radius: 18px 18px 0 0; padding: 18px 16px 26px; }
+  .popover-sheet .ph { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; text-align: center; }
+  .popover-sheet .btn-row { margin-bottom: 8px; }
+  .popover-sheet .cancel { width: 100%; margin-top: 4px; padding: 12px; border-radius: 12px; border: none; background: none; color: var(--text-dim); font-size: 14px; }
+
+  #nameGate {
+    position: fixed; inset: 0; background: var(--bg); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
   }
-  .btn-link {
-    background: none;
-    width: auto;
-    color: var(--muted);
-    font-size: 13px;
-    text-decoration: underline;
-    padding: 4px;
+  #nameGate .box { max-width: 360px; width: 100%; text-align: center; }
+  #nameGate .icon { font-size: 40px; margin-bottom: 8px; }
+  #nameGate h2 { font-size: 18px; margin: 0 0 6px; }
+  #nameGate p { font-size: 13px; color: var(--text-dim); margin: 0 0 16px; }
+  #nameGate input {
+    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 15px; margin-bottom: 10px;
+  }
+  #nameGate button {
+    width: 100%; padding: 13px; border-radius: 12px; border: none;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
   }
 
-  .greeting { font-size: 15px; color: var(--muted); margin-bottom: 12px; }
-  .greeting b { color: var(--text); }
-
-  .list { list-style: none; margin: 0; padding: 0; }
-  .list li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 4px;
-    border-bottom: 1px solid var(--card-border);
-  }
-  .list li:last-child { border-bottom: none; }
-  .name-block { display: flex; align-items: center; gap: 10px; }
-  .status-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: #3a4a68;
-    flex-shrink: 0;
-  }
-  .status-dot.done { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
-  .streak { color: var(--muted); font-size: 13px; white-space: nowrap; }
-  .streak.on { color: #ffb454; }
-
-  .section-title {
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    margin: 0 0 10px;
-  }
-
-  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 12px 0; }
-  .footer-link { text-align: center; margin-top: 8px; }
+  footer { text-align: center; font-size: 11px; color: var(--text-dim); margin-top: 18px; }
+  #app { display: none; }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div id="nameGate">
+  <div class="box">
+    <div class="icon">🕌</div>
+    <h2>Fajr Tracker</h2>
+    <p>What's your name? Your friends will see it on the shared board.</p>
+    <input id="gateInput" type="text" placeholder="e.g. Yusuf" maxlength="30" autofocus>
+    <button id="gateSubmit">Join</button>
+  </div>
+</div>
+
+<div id="app">
   <header>
-    <h1>🌙 Fajr Tracker</h1>
-    <p>Check in with your friends, keep each other consistent.</p>
+    <div class="icon">🕌</div>
+    <h1>Fajr Tracker</h1>
+    <div class="sub" id="whoami"></div>
   </header>
 
-  <div id="join-card" class="card" style="display:none;">
-    <p class="section-title">Get started</p>
-    <input id="name-input" type="text" placeholder="Your name" maxlength="40" />
-    <button id="join-btn" class="btn-primary">Join the group</button>
+  <div class="card">
+    <div class="today-date" id="todayDate"></div>
+    <div class="today-status" id="todayStatus">Not logged yet</div>
+    <div class="btn-row">
+      <button class="btn home" data-status="home">🏠 Home</button>
+      <button class="btn masjid" data-status="masjid">🕌 Masjid</button>
+      <button class="btn clear" id="clearToday">Clear</button>
+    </div>
   </div>
 
-  <div id="main-card" style="display:none;">
-    <div class="card">
-      <p class="greeting">Assalamu alaikum, <b id="me-name"></b> 👋</p>
-      <button id="checkin-btn" class="btn-primary">I prayed Fajr today ✓</button>
-      <div class="footer-link">
-        <button id="switch-btn" class="btn-link">Not you? Switch name</button>
-      </div>
+  <div class="card">
+    <h2>Your month</h2>
+    <div class="stats-grid">
+      <div class="stat streak"><div class="num" id="statStreak">0</div><div class="lbl">day streak</div></div>
+      <div class="stat"><div class="num" id="statPct">—</div><div class="lbl">on time</div></div>
+      <div class="stat"><div class="num" id="statMissed">0</div><div class="lbl">missed</div></div>
     </div>
+  </div>
 
-    <div class="card">
-      <p class="section-title">Group</p>
-      <ul id="member-list" class="list"></ul>
-      <div id="empty-state" class="empty" style="display:none;">No one has joined yet — be the first!</div>
+  <div class="card">
+    <h2>Friends</h2>
+    <div class="legend">
+      <span><i class="dot home"></i>Home</span>
+      <span><i class="dot masjid"></i>Masjid</span>
+      <span><i class="dot missed"></i>Missed</span>
+      <span><i class="dot pending"></i>Pending</span>
     </div>
+    <div id="friendsList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Your last 6 weeks</h2>
+    <div class="weekday-row">
+      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+    </div>
+    <div class="grid" id="historyGrid"></div>
+  </div>
+
+  <footer>Everyone on this link shares one board. Tap any past day to fix a log.</footer>
+</div>
+
+<div class="popover" id="popover">
+  <div class="popover-sheet">
+    <div class="ph" id="popoverDate"></div>
+    <div class="btn-row">
+      <button class="btn home" data-status="home">🏠 Home</button>
+      <button class="btn masjid" data-status="masjid">🕌 Masjid</button>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn" data-status="missed">Mark missed</button>
+      <button class="btn clear" data-status="clear">Clear</button>
+    </div>
+    <button class="cancel" id="popoverCancel">Cancel</button>
   </div>
 </div>
 
 <script>
-  const STORAGE_KEY = 'fajr-tracker-name';
+(function () {
+  var NAME_KEY = 'fajrTracker.name.v1';
+  var POLL_MS = 12000;
 
-  const joinCard = document.getElementById('join-card');
-  const mainCard = document.getElementById('main-card');
-  const nameInput = document.getElementById('name-input');
-  const joinBtn = document.getElementById('join-btn');
-  const meName = document.getElementById('me-name');
-  const checkinBtn = document.getElementById('checkin-btn');
-  const switchBtn = document.getElementById('switch-btn');
-  const memberList = document.getElementById('member-list');
-  const emptyState = document.getElementById('empty-state');
-
-  function getStoredName() {
-    try { return localStorage.getItem(STORAGE_KEY) || ''; } catch (e) { return ''; }
-  }
-  function setStoredName(name) {
-    try { localStorage.setItem(STORAGE_KEY, name); } catch (e) {}
-  }
-  function clearStoredName() {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function toKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function startOfDay(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function slugify(name) {
+    return String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'friend';
   }
 
-  async function api(path, opts) {
-    const res = await fetch(path, {
-      headers: { 'Content-Type': 'application/json' },
-      ...opts,
-    });
-    if (!res.ok) throw new Error('Request failed');
-    return res.json();
-  }
+  var WEEKDAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  function renderMembers(members, myName) {
-    memberList.innerHTML = '';
-    if (!members.length) {
-      emptyState.style.display = 'block';
-      return;
-    }
-    emptyState.style.display = 'none';
+  var myName = null;
+  var mySlug = null;
+  var state = { users: [], logs: [] };
 
-    members.forEach((m) => {
-      const li = document.createElement('li');
-
-      const left = document.createElement('div');
-      left.className = 'name-block';
-      const dot = document.createElement('div');
-      dot.className = 'status-dot' + (m.checkedInToday ? ' done' : '');
-      const label = document.createElement('span');
-      label.textContent = m.name + (m.name === myName ? ' (you)' : '');
-      left.appendChild(dot);
-      left.appendChild(label);
-
-      const streak = document.createElement('span');
-      streak.className = 'streak' + (m.streak > 0 ? ' on' : '');
-      streak.textContent = m.streak > 0 ? `🔥 ${m.streak} day${m.streak === 1 ? '' : 's'}` : 'no streak yet';
-
-      li.appendChild(left);
-      li.appendChild(streak);
-      memberList.appendChild(li);
+  // ---- API helpers ----
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = { 'Content-Type': 'application/json' };
+    if (opts.body) opts.body = JSON.stringify(opts.body);
+    return fetch(path, opts).then(function (r) {
+      if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'request failed'); });
+      return r.json();
     });
   }
 
-  async function refreshState(myName) {
-    const state = await api('/api/state');
-    renderMembers(state.members, myName);
-
-    const me = state.members.find((m) => m.name === myName);
-    if (me && me.checkedInToday) {
-      checkinBtn.textContent = 'Checked in for today ✓';
-      checkinBtn.className = 'btn-checked';
-      checkinBtn.disabled = true;
-    } else {
-      checkinBtn.textContent = 'I prayed Fajr today ✓';
-      checkinBtn.className = 'btn-primary';
-      checkinBtn.disabled = false;
-    }
+  function fetchState() {
+    return api('/api/state').then(function (s) {
+      state = s;
+      render();
+    }).catch(function () { /* keep last known state on transient failure */ });
   }
 
-  function showMain(name) {
-    joinCard.style.display = 'none';
-    mainCard.style.display = 'block';
-    meName.textContent = name;
-    refreshState(name);
+  function setStatus(dateKey, status) {
+    return api('/api/log', { method: 'POST', body: { user: myName, date: dateKey, status: status } })
+      .then(fetchState);
   }
 
-  function showJoin() {
-    mainCard.style.display = 'none';
-    joinCard.style.display = 'block';
-    nameInput.value = '';
-    nameInput.focus();
-  }
+  // ---- name gate ----
+  var nameGate = document.getElementById('nameGate');
+  var appEl = document.getElementById('app');
+  var gateInput = document.getElementById('gateInput');
+  var gateSubmit = document.getElementById('gateSubmit');
 
-  joinBtn.addEventListener('click', async () => {
-    const name = nameInput.value.trim();
+  function joinAs(name) {
+    name = name.trim();
     if (!name) return;
-    joinBtn.disabled = true;
-    try {
-      await api('/api/join', { method: 'POST', body: JSON.stringify({ name }) });
-      setStoredName(name);
-      showMain(name);
-    } catch (e) {
-      alert('Something went wrong joining. Please try again.');
-    } finally {
-      joinBtn.disabled = false;
-    }
-  });
-
-  nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') joinBtn.click();
-  });
-
-  checkinBtn.addEventListener('click', async () => {
-    const name = getStoredName();
-    if (!name) return;
-    checkinBtn.disabled = true;
-    try {
-      await api('/api/checkin', { method: 'POST', body: JSON.stringify({ name }) });
-      await refreshState(name);
-    } catch (e) {
-      alert('Something went wrong checking in. Please try again.');
-      checkinBtn.disabled = false;
-    }
-  });
-
-  switchBtn.addEventListener('click', () => {
-    clearStoredName();
-    showJoin();
-  });
-
-  // Init
-  const stored = getStoredName();
-  if (stored) {
-    showMain(stored);
-  } else {
-    showJoin();
+    myName = name;
+    mySlug = slugify(name);
+    try { localStorage.setItem(NAME_KEY, name); } catch (e) {}
+    api('/api/users', { method: 'POST', body: { user: name } }).catch(function () {});
+    nameGate.style.display = 'none';
+    appEl.style.display = 'block';
+    document.getElementById('whoami').textContent = 'Signed in as ' + name;
+    fetchState();
+    setInterval(fetchState, POLL_MS);
   }
 
-  // Light polling so everyone's screen stays roughly in sync
-  setInterval(() => {
-    const name = getStoredName();
-    if (name && mainCard.style.display !== 'none') {
-      refreshState(name).catch(() => {});
+  gateSubmit.addEventListener('click', function () { joinAs(gateInput.value); });
+  gateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') joinAs(gateInput.value); });
+
+  try {
+    var saved = localStorage.getItem(NAME_KEY);
+    if (saved) joinAs(saved);
+  } catch (e) {}
+
+  // ---- rendering ----
+  var todayDateEl = document.getElementById('todayDate');
+  var todayStatusEl = document.getElementById('todayStatus');
+  var historyGrid = document.getElementById('historyGrid');
+  var friendsList = document.getElementById('friendsList');
+  var statStreak = document.getElementById('statStreak');
+  var statPct = document.getElementById('statPct');
+  var statMissed = document.getElementById('statMissed');
+
+  function labelFor(status) {
+    if (status === 'home') return '🏠 Prayed at home';
+    if (status === 'masjid') return '🕌 Prayed in masjid';
+    if (status === 'missed') return '✕ Missed';
+    return 'Not logged yet';
+  }
+
+  function logsBySlug(slug) {
+    var map = {};
+    state.logs.forEach(function (l) { if (l.slug === slug) map[l.date] = l.status; });
+    return map;
+  }
+
+  function computeStreak(logMap, today) {
+    var streak = 0;
+    var d = new Date(today);
+    var todayKeyStr = toKey(today);
+    while (true) {
+      var key = toKey(d);
+      var status = logMap[key];
+      if (key === todayKeyStr && !status) { d.setDate(d.getDate() - 1); continue; }
+      if (status === 'home' || status === 'masjid') { streak++; d.setDate(d.getDate() - 1); }
+      else break;
     }
-  }, 15000);
+    return streak;
+  }
+
+  function effectiveStatus(logMap, d, today) {
+    var key = toKey(d);
+    var status = logMap[key];
+    var isFuture = d.getTime() > today.getTime();
+    var isToday = d.getTime() === today.getTime();
+    if (!status && !isFuture && !isToday) return 'missed';
+    return status || null;
+  }
+
+  function render() {
+    if (!myName) return;
+    var today = startOfDay(new Date());
+    var tKey = toKey(today);
+    var myLogs = logsBySlug(mySlug);
+
+    todayDateEl.textContent = WEEKDAYS_LONG[today.getDay()] + ', ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
+    var tStatus = myLogs[tKey];
+    todayStatusEl.textContent = tStatus ? labelFor(tStatus) : 'Not logged yet — becomes missed once today passes';
+
+    document.querySelectorAll('.card .btn-row .btn.home, .card .btn-row .btn.masjid').forEach(function (b) {
+      if (b.closest('.popover')) return;
+      b.classList.toggle('active', b.dataset.status === tStatus);
+    });
+
+    // 42-day grid for "you"
+    var totalDays = 42;
+    var start = new Date(today);
+    start.setDate(start.getDate() - (totalDays - 1));
+    var leadPad = start.getDay();
+
+    historyGrid.innerHTML = '';
+    for (var p = 0; p < leadPad; p++) {
+      var empty = document.createElement('div');
+      empty.className = 'day empty';
+      historyGrid.appendChild(empty);
+    }
+
+    var monthGood = 0, monthMissed = 0, monthLogged = 0;
+    for (var i = 0; i < totalDays; i++) {
+      var d = new Date(start);
+      d.setDate(d.getDate() + i);
+      var status = effectiveStatus(myLogs, d, today);
+      var isFuture = d.getTime() > today.getTime();
+      var isToday = d.getTime() === today.getTime();
+
+      var div = document.createElement('div');
+      var cls = 'day';
+      if (status) cls += ' ' + status;
+      if (isToday) cls += ' today';
+      div.className = cls;
+      div.textContent = d.getDate();
+      if (isFuture) { div.style.visibility = 'hidden'; }
+      else {
+        (function (key) { div.addEventListener('click', function () { openPopover(key, d); }); })(toKey(d));
+      }
+      historyGrid.appendChild(div);
+
+      if (d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() && !isFuture) {
+        if (status === 'home' || status === 'masjid') { monthGood++; monthLogged++; }
+        else if (status === 'missed') { monthMissed++; monthLogged++; }
+      }
+    }
+
+    statStreak.textContent = computeStreak(myLogs, today);
+    statPct.textContent = monthLogged ? Math.round((monthGood / monthLogged) * 100) + '%' : '—';
+    statMissed.textContent = monthMissed;
+
+    // Friends board
+    var users = state.users.slice();
+    if (!users.some(function (u) { return u.slug === mySlug; })) {
+      users.push({ name: myName, slug: mySlug });
+    }
+    var rows = users.map(function (u) {
+      var lm = logsBySlug(u.slug);
+      var streak = computeStreak(lm, today);
+      var strip = [];
+      for (var k = 6; k >= 0; k--) {
+        var dd = new Date(today);
+        dd.setDate(dd.getDate() - k);
+        strip.push(effectiveStatus(lm, dd, today) || 'pending');
+      }
+      return { user: u, streak: streak, strip: strip, todayStatus: lm[tKey] || 'pending' };
+    });
+    rows.sort(function (a, b) { return b.streak - a.streak; });
+
+    friendsList.innerHTML = '';
+    if (!rows.length) {
+      var e = document.createElement('div');
+      e.className = 'empty-state';
+      e.textContent = 'No one has joined yet — share this link with friends.';
+      friendsList.appendChild(e);
+    }
+    rows.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'friend-row';
+
+      var name = document.createElement('div');
+      name.className = 'friend-name' + (r.user.slug === mySlug ? ' you' : '');
+      name.textContent = r.user.name + (r.user.slug === mySlug ? ' (you)' : '');
+
+      var strip = document.createElement('div');
+      strip.className = 'mini-strip';
+      r.strip.forEach(function (s) {
+        var dot = document.createElement('div');
+        dot.className = 'mini-dot ' + s;
+        strip.appendChild(dot);
+      });
+
+      var streak = document.createElement('div');
+      streak.className = 'friend-streak';
+      streak.textContent = r.streak + '🔥';
+
+      row.appendChild(name);
+      row.appendChild(strip);
+      row.appendChild(streak);
+      friendsList.appendChild(row);
+    });
+  }
+
+  // today buttons
+  document.querySelectorAll('#app .card .btn-row .btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!myName) return;
+      var today = toKey(startOfDay(new Date()));
+      if (btn.id === 'clearToday') { setStatus(today, 'clear'); return; }
+      setStatus(today, btn.dataset.status);
+    });
+  });
+
+  // popover for past days
+  var popover = document.getElementById('popover');
+  var popoverDate = document.getElementById('popoverDate');
+  var activeKey = null;
+
+  function openPopover(key, date) {
+    activeKey = key;
+    popoverDate.textContent = WEEKDAYS_LONG[date.getDay()] + ', ' + MONTHS[date.getMonth()] + ' ' + date.getDate();
+    popover.classList.add('open');
+  }
+  function closePopover() { popover.classList.remove('open'); activeKey = null; }
+
+  popover.addEventListener('click', function (e) { if (e.target === popover) closePopover(); });
+  document.getElementById('popoverCancel').addEventListener('click', closePopover);
+  popover.querySelectorAll('.btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!activeKey) return;
+      setStatus(activeKey, btn.dataset.status);
+      closePopover();
+    });
+  });
+})();
 </script>
 </body>
 </html>
